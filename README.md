@@ -18,7 +18,41 @@ Each run:
 4. Sends each ticker + news to Claude for a short analysis
 5. Emails an HTML report via Gmail
 
-## Setup
+## Deployment (AWS Lambda)
+
+The script runs as an AWS Lambda function triggered by EventBridge on a schedule. Dependencies are packaged as a Lambda layer and stored in S3.
+
+### Prerequisites
+
+- AWS CLI installed (`brew install awscli`) and configured (`aws configure`)
+- IAM user with the following policies:
+  - `AWSLambdaFullAccess`
+  - `IAMFullAccess`
+  - `AmazonEventBridgeFullAccess`
+  - `AmazonS3FullAccess`
+  - `CloudWatchLogsFullAccess`
+
+### Deploy
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+The script will:
+1. Build a Linux-compatible dependencies layer and upload to S3
+2. Package and upload your function code
+3. Create the IAM execution role for Lambda
+4. Create the Lambda function with all env vars from `.env`
+5. Set up two EventBridge rules to trigger it Mon–Fri
+
+**Schedule (EDT, summer):** 10:30 AM and 2:30 PM ET. Update cron times in `deploy.sh` in November when DST ends (`14→15`, `18→19` UTC).
+
+### View logs
+
+[CloudWatch → stock-notifier](https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/%2Faws%2Flambda%2Fstock-notifier)
+
+## Local usage
 
 ```bash
 python -m venv .venv
@@ -26,16 +60,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # fill in your keys
 ```
-
-**.env**
-
-```
-ANTHROPIC_API_KEY=...
-GMAIL_SENDER=you@gmail.com
-GMAIL_APP_PASSWORD=...
-```
-
-## Usage
 
 ```bash
 # Auto-detect session from current time
@@ -62,6 +86,7 @@ python main.py --top-n 5
 | `ANTHROPIC_API_KEY` | Yes | Claude API key |
 | `GMAIL_SENDER` | Yes | Gmail address to send from |
 | `GMAIL_APP_PASSWORD` | Yes | Gmail app password |
+| `EMAIL_RECIPIENTS` | No | Comma-separated or JSON array of recipients |
 | `TICKER_LIST` | No | Comma-separated tickers (overrides default list) |
 | `TOP_N` | No | Number of top gainers to report (default: 10) |
 

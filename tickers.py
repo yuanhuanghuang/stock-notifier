@@ -11,7 +11,7 @@ import urllib.request
 import certifi
 import pandas as pd
 
-CACHE_DIR = os.path.expanduser("~/.stock_notifier")
+CACHE_DIR = os.environ.get("CACHE_DIR", "/tmp/.stock_notifier")
 CACHE_FILE = os.path.join(CACHE_DIR, "tickers.csv")
 CACHE_TTL_SECONDS = 7 * 24 * 3600  # 1 week
 
@@ -31,12 +31,17 @@ _EXCLUDE_SUFFIXES = {
 
 
 def _is_common_equity(symbol: str) -> bool:
-    parts = symbol.split(".")
-    if len(parts) > 1 and parts[-1].upper() in _EXCLUDE_SUFFIXES:
-        return False
     # Skip symbols with special characters (^, -, /)
     if any(c in symbol for c in ("^", "-", "/")):
         return False
+    # Dot-separated suffix: e.g. BRK.W
+    parts = symbol.split(".")
+    if len(parts) > 1 and parts[-1].upper() in _EXCLUDE_SUFFIXES:
+        return False
+    # No-dot suffix: e.g. BLRKW, BRKRP, CCXIU
+    for suffix in _EXCLUDE_SUFFIXES:
+        if symbol.endswith(suffix) and len(symbol) > len(suffix):
+            return False
     return True
 
 
